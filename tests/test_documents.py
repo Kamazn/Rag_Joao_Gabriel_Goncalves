@@ -3,7 +3,10 @@ from pathlib import Path
 import pytest
 
 from src.rag_httpx.config import EXPECTED_MARKDOWN_FILES
-from src.rag_httpx.documents import find_markdown_files
+from src.rag_httpx.documents import (
+    find_markdown_files,
+    load_markdown_documents,
+)
 
 
 def test_finds_official_markdown_files() -> None:
@@ -12,8 +15,9 @@ def test_finds_official_markdown_files() -> None:
     assert len(markdown_files) == EXPECTED_MARKDOWN_FILES
     assert all(path.suffix == ".md" for path in markdown_files)
 
-# Cria uma base pequena e temporaria pra testar a busca recursiva
+
 def test_finds_markdown_files_inside_subfolders(tmp_path: Path) -> None:
+    # Cria uma base temporaria pra testar a busca dentro das subpastas
     subfolder = tmp_path / "advanced"
     subfolder.mkdir()
 
@@ -29,10 +33,33 @@ def test_finds_markdown_files_inside_subfolders(tmp_path: Path) -> None:
 
     assert markdown_files == sorted([first_file, second_file])
 
-# Confirma se aparece um erro quando a pasta existe mas nao tem nenhum arquivo
+
+def test_loads_documents_with_metadata() -> None:
+    markdown_files = find_markdown_files()
+    documents = load_markdown_documents(markdown_files)
+
+    assert len(documents) == EXPECTED_MARKDOWN_FILES
+    assert all(document.page_content.strip() for document in documents)
+    assert all(
+        document.metadata["source"].startswith("docs/")
+        for document in documents
+    )
+    assert all(document.metadata["title"] for document in documents)
+
+    index_document = next(
+        document
+        for document in documents
+        if document.metadata["source"] == "docs/index.md"
+    )
+
+    assert index_document.metadata["title"] == "HTTPX"
+
+
+# Confirma se aparece um erro quando a pasta existe mas nao tem nenhum Markdown
 def test_rejects_empty_corpus(tmp_path: Path) -> None:
     with pytest.raises(ValueError, match="Nenhum arquivo Markdown"):
         find_markdown_files(tmp_path)
+
 
 # Confirma se aparece um erro quando a pasta da documentacao nao foi encontrada
 def test_rejects_missing_docs_folder(tmp_path: Path) -> None:
