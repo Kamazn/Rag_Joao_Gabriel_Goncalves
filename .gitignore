@@ -1,0 +1,17 @@
+# Ambiente virtual
+.venv/
+
+# Cache do Python
+__pycache__/
+*.py[cod]
+
+# Testes
+.pytest_cache/
+
+# Dados gerados ou baixados
+data/httpx/
+data/chroma/
+
+# Configurações locais e segredos
+.env
+.vscode/
