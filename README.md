@@ -425,8 +425,8 @@ Confirme uma opção:
 
 ## Envio
 
-- [ ] O repositório abre para o professor ou o ZIP foi testado após ser descompactado.
+- [x] O repositório abre para o professor ou o ZIP foi testado após ser descompactado.
 - [x] O nome da entrega identifica o aluno.
-- [ ] O envio foi concluído dentro da janela de sexta-feira, 28 de agosto de 2026, às 13h, até domingo, 30 de agosto de 2026, às 13h, no horário de Recife.
+- [x] O envio foi concluído dentro da janela de sexta-feira, 28 de agosto de 2026, às 13h, até domingo, 30 de agosto de 2026, às 13h, no horário de Recife.
 
 Abra sua própria entrega uma última vez em uma janela anônima ou ambiente limpo antes de enviá-la.
