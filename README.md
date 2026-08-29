@@ -6,7 +6,7 @@ Sistema local de recuperação e geração de respostas fundamentadas na documen
 
 - Nome do aluno: João Gabriel Gonçalves Batista
 - Formato da solução: Script Python pelo terminal e interface web local com Streamlit
-- Link do vídeo: PENDENTE
+- Link do vídeo: https://youtu.be/3BK1a7VW52M
 - Link do Colab, se aplicável: Não se aplica
 
 ## Objetivo
@@ -209,7 +209,14 @@ Esse comando:
 
 A primeira indexação pode demorar alguns minutos. O índice permanece salvo no Chroma e não precisa ser recriado antes de cada pergunta.
 
-### 8. Abra o modo interativo
+### 8. Escolha como utilizar o RAG
+
+Depois de criar o índice, escolha uma das formas abaixo. Não é necessário abrir as duas ao mesmo tempo:
+
+- Terminal: funciona no Windows, Linux e macOS e permite fazer perguntas diretamente pela linha de comando
+- Streamlit: funciona no Windows, Linux e macOS e abre uma interface web local no navegador
+
+#### Opção A: terminal
 
 Execute:
 
@@ -237,7 +244,7 @@ Depois da resposta, outra pergunta poderá ser digitada. Para encerrar, digite:
 sair
 ```
 
-### 9. Abra a interface web
+#### Opção B: interface web com Streamlit
 
 A interface utiliza o mesmo pipeline do terminal. Execute:
 
@@ -245,13 +252,21 @@ A interface utiliza o mesmo pipeline do terminal. Execute:
 python -m streamlit run app.py
 ```
 
+Na primeira execução, o Streamlit pode solicitar um e-mail no terminal:
+
+```text
+Email:
+```
+
+O e-mail não é obrigatório. Deixe o campo vazio e pressione `Enter` para continuar.
+
 O navegador deverá abrir automaticamente em `http://localhost:8501`.
 
 Digite uma pergunta no campo localizado na parte inferior da página e pressione `Enter`. A interface mostra a resposta do Qwen e os chunks recuperados com fonte, seção, ranking, similaridade e conteúdo completo em caixas expansíveis.
 
 O valor de `top_k` pode ser alterado entre 3 e 5 pela barra lateral. O padrão continua sendo 3. Para encerrar a página, pressione `Ctrl + C` no terminal.
 
-### 10. Execute somente a recuperação
+### 9. Execute somente a recuperação
 
 A geração é opcional. Para testar apenas a busca semântica, sem chamar o modelo gerador, execute:
 
@@ -265,7 +280,7 @@ Para comparar cinco resultados:
 python main.py query "Como configurar timeouts no HTTPX?" --top-k 5 --retrieval-only
 ```
 
-### 11. Execute os testes automatizados
+### 10. Execute os testes automatizados
 
 Com o ambiente virtual ativo, execute:
 
@@ -399,7 +414,7 @@ Confirme uma opção:
 
 ## Evidência
 
-- [ ] O link do vídeo está no README e abre sem solicitar acesso adicional; ou
+- [x] O link do vídeo está no README e abre sem solicitar acesso adicional; ou
 - [ ] O `DIAGNOSTICO.md` foi incluído porque a execução não foi concluída.
 
 ## Segurança e privacidade
