@@ -421,7 +421,7 @@ Confirme uma opção:
 
 - [x] Não há API keys, tokens ou senhas no código, notebook, histórico, vídeo ou ZIP.
 - [x] Notificações e dados pessoais não aparecem no vídeo.
-- [ ] Links compartilhados concedem somente o acesso necessário.
+- [x] Links compartilhados concedem somente o acesso necessário.
 
 ## Envio
 
