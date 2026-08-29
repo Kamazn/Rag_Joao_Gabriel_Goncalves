@@ -420,7 +420,7 @@ Confirme uma opção:
 ## Segurança e privacidade
 
 - [x] Não há API keys, tokens ou senhas no código, notebook, histórico, vídeo ou ZIP.
-- [ ] Notificações e dados pessoais não aparecem no vídeo.
+- [x] Notificações e dados pessoais não aparecem no vídeo.
 - [ ] Links compartilhados concedem somente o acesso necessário.
 
 ## Envio
