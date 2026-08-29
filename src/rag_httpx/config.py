@@ -16,9 +16,9 @@ EMBEDDING_MODEL = "qwen3-embedding:4b"
 GENERATION_MODEL = "qwen3.5:4b"
 DEFAULT_RESPONSE_LANGUAGE = "pt-BR"
 
-# Comeco com esses valores de chunking, depois ajusto usando os testes
-CHUNK_SIZE_WORDS = 80
-CHUNK_OVERLAP_WORDS = 15
+# Valores escolhidos depois de comparar tres configuracoes
+CHUNK_SIZE_WORDS = 60
+CHUNK_OVERLAP_WORDS = 10
 
 DEFAULT_TOP_K = 3
 MIN_TOP_K = 3

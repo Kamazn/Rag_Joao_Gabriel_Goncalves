@@ -69,8 +69,7 @@ def test_builds_context_with_source() -> None:
 def test_generates_answer_with_fake_model() -> None:
     fake_model = FakeListChatModel(
         responses=[
-            "HTTPX permite configurar timeouts "
-            "[docs/advanced/timeouts.md]"
+            "HTTPX permite configurar timeouts"
         ]
     )
 

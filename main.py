@@ -2,7 +2,7 @@ import argparse
 import time
 from typing import Any
 
-# Mostra os trechos mesmo quando a geracao estiver desligada
+# Mostra o texto e a origem de cada trecho recuperado
 def print_search_results(response: Any) -> None:
     print("\nTrechos recuperados:")
 
@@ -12,10 +12,13 @@ def print_search_results(response: Any) -> None:
         section = metadata.get("section", "Sem seção")
 
         print(
-            f"{result.rank}. {source} | "
+            f"\n{result.rank}. {source} | "
             f"Seção: {section} | "
             f"Similaridade: {result.similarity:.4f}"
         )
+        print("\nTrecho:")
+        print(result.document.page_content)
+        print("-" * 80)
 
     if response.answer is not None:
         print("\nResposta:")
@@ -28,7 +31,6 @@ def create_parser() -> argparse.ArgumentParser:
 
     commands = parser.add_subparsers(
         dest="command",
-        required=True,
     )
 
     commands.add_parser(
@@ -38,7 +40,7 @@ def create_parser() -> argparse.ArgumentParser:
 
     query_parser = commands.add_parser(
         "query",
-        help="Faz uma pergunta sobre a documentação",
+        help="Executa uma pergunta diretamente pelo comando",
     )
 
     query_parser.add_argument(
@@ -62,12 +64,65 @@ def create_parser() -> argparse.ArgumentParser:
 
     return parser
 
+# Mantem o banco e o modelo carregados enquanto varias perguntas sao feitas
+def run_interactive_chat(
+    run_query_pipeline: Any,
+) -> int:
+    from src.rag_httpx.generation import create_generation_model
+    from src.rag_httpx.indexing import (
+        create_vector_store,
+        get_indexed_chunk_count,
+    )
+
+    vector_store = create_vector_store()
+
+    if get_indexed_chunk_count(vector_store) == 0:
+        print(
+            "\nO índice está vazio, execute primeiro:\n"
+            "python main.py index"
+        )
+        return 1
+
+    print("Preparando o Qwen...", flush=True)
+    model = create_generation_model()
+
+    print("\nRAG da documentação HTTPX")
+    print("Digite sua pergunta normalmente")
+    print("Digite 'sair' para encerrar")
+
+    while True:
+        try:
+            question = input("\nPergunta: ").strip()
+        except EOFError:
+            print("\nEncerrando o RAG")
+            return 0
+
+        if question.casefold() in {"sair", "exit", "quit"}:
+            print("Encerrando o RAG")
+            return 0
+
+        if not question:
+            print("A pergunta não pode estar vazia")
+            continue
+
+        try:
+            response = run_query_pipeline(
+                query=question,
+                vector_store=vector_store,
+                model=model,
+                show_progress=True,
+            )
+
+            print_search_results(response)
+
+        except Exception as error:
+            print(f"\nErro ao responder: {error}")
+
 def main() -> int:
     parser = create_parser()
     args = parser.parse_args()
 
     try:
-        # Importa as bibliotecas pesadas so depois de entender o comando
         print("Carregando o banco vetorial e os modelos locais...", flush=True)
         loading_start = time.perf_counter()
 
@@ -81,6 +136,10 @@ def main() -> int:
             f"Dependências carregadas em {loading_time:.1f} segundos",
             flush=True,
         )
+
+        # Sem comando abre o modo de perguntas interativas
+        if args.command is None:
+            return run_interactive_chat(run_query_pipeline)
 
         if args.command == "index":
             print("Iniciando a indexação no Chroma...", flush=True)
@@ -105,7 +164,7 @@ def main() -> int:
         return 0
 
     except KeyboardInterrupt:
-        print("\nExecução interrompida antes de terminar")
+        print("\nExecução interrompida")
         return 130
 
     except Exception as error:
