@@ -1,9 +1,11 @@
+import logging
 from typing import Any
 
 import streamlit as st
 from langchain_chroma import Chroma
 from langchain_core.language_models.chat_models import BaseChatModel
 
+from src.rag_httpx.config import NOT_FOUND_MESSAGE
 from src.rag_httpx.generation import (
     create_generation_model,
     generate_answer,
@@ -13,6 +15,8 @@ from src.rag_httpx.indexing import (
     get_indexed_chunk_count,
 )
 from src.rag_httpx.pipeline import run_query_pipeline
+
+logger = logging.getLogger(__name__)
 
 st.set_page_config(
     page_title="RAG CHAT HTTPX",
@@ -55,6 +59,10 @@ def show_assistant_message(message: dict[str, Any]) -> None:
 
     if message.get("generation_error"):
         st.warning(message["generation_error"])
+
+    # Sem trechos relevantes nao mostra a secao nem nenhuma fonte
+    if not message["results"]:
+        return
 
     st.markdown("#### Trechos recuperados")
 
@@ -147,37 +155,45 @@ if question:
                 )
 
             generation_error: str | None = None
+            answer = NOT_FOUND_MESSAGE
+            results_to_show = retrieval_response.results
 
-            try:
-                with st.spinner("Gerando a resposta com o Qwen..."):
-                    model = load_generation_model()
+            if retrieval_response.found:
+                try:
+                    with st.spinner("Gerando a resposta com o Qwen..."):
+                        model = load_generation_model()
 
-                    answer = generate_answer(
-                        query=question,
-                        results=retrieval_response.results,
-                        model=model,
+                        answer = generate_answer(
+                            query=question,
+                            results=retrieval_response.results,
+                            model=model,
+                        )
+
+                    # O modelo concluiu que o contexto nao responde
+                    if answer == NOT_FOUND_MESSAGE:
+                        results_to_show = []
+
+                except Exception:
+                    # Detalhes tecnicos ficam so no log, nunca na tela
+                    logger.exception("Erro durante a geração da resposta")
+                    answer = (
+                        "A recuperação dos documentos funcionou, mas não foi "
+                        "possível gerar a resposta em linguagem natural."
                     )
-
-            except Exception as error:
-                answer = (
-                    "A recuperação dos documentos funcionou, mas não foi "
-                    "possível gerar a resposta em linguagem natural."
-                )
-                generation_error = (
-                    f"Erro durante a geração: {error}"
-                )
+                    generation_error = (
+                        "Não foi possível gerar a resposta agora."
+                    )
 
             assistant_message = {
                 "role": "assistant",
                 "answer": answer,
-                "results": prepare_results(
-                    retrieval_response.results
-                ),
+                "results": prepare_results(results_to_show),
                 "generation_error": generation_error,
             }
 
             show_assistant_message(assistant_message)
             st.session_state.messages.append(assistant_message)
 
-        except Exception as error:
-            st.error(f"Não foi possível realizar a busca: {error}")
+        except Exception:
+            logger.exception("Erro durante a busca")
+            st.error("Não foi possível realizar a busca. Tente novamente.")

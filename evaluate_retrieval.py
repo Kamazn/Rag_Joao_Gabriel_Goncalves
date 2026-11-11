@@ -14,6 +14,7 @@ from src.rag_httpx.indexing import (
     create_vector_store,
     index_chunks,
 )
+from src.rag_httpx.config import MIN_SIMILARITY
 from src.rag_httpx.retrieval import search_similar_chunks
 
 @dataclass(frozen=True)
@@ -65,6 +66,14 @@ QUESTIONS = (
     ),
 )
 
+# Perguntas sem relacao com o HTTPX, usadas pra calibrar o limiar de similaridade
+OUT_OF_SCOPE_QUERIES = (
+    "Qual é a capital da França?",
+    "Como fazer um bolo de chocolate?",
+    "Quem ganhou a Copa do Mundo de 2014?",
+    "What is the best way to learn guitar?",
+)
+
 CONFIGURATIONS = (
     (60, 10),
     (80, 15),
@@ -103,6 +112,7 @@ def evaluate_configuration(
         indexing_seconds = perf_counter() - indexing_start
         hits = 0
         reciprocal_rank_sum = 0.0
+        in_scope_scores: list[float] = []
 
         print(
             f"\nConfiguração: chunk={chunk_size} overlap={overlap}"
@@ -125,6 +135,8 @@ def evaluate_configuration(
                 None,
             )
 
+            in_scope_scores.append(results[0].similarity)
+
             if expected_rank is not None:
                 hits += 1
                 reciprocal_rank_sum += 1.0 / expected_rank
@@ -141,6 +153,23 @@ def evaluate_configuration(
             )
 
             print(f"{number}. {status} | {returned_sources}")
+
+        # Compara o pior acerto com o melhor resultado fora do assunto
+        out_of_scope_scores = [
+            search_similar_chunks(
+                query=query,
+                vector_store=vector_store,
+                top_k=3,
+            )[0].similarity
+            for query in OUT_OF_SCOPE_QUERIES
+        ]
+
+        print(
+            "Calibração do limiar | "
+            f"menor top 1 no assunto: {min(in_scope_scores):.4f} | "
+            f"maior top 1 fora do assunto: {max(out_of_scope_scores):.4f} | "
+            f"limiar atual: {MIN_SIMILARITY:.2f}"
+        )
 
         return EvaluationSummary(
             chunk_size=chunk_size,

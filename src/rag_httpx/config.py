@@ -24,4 +24,18 @@ DEFAULT_TOP_K = 3
 MIN_TOP_K = 3
 MAX_TOP_K = 5
 
+# Similaridade minima pra um trecho ser considerado relevante.
+# Nos testes manuais, perguntas fora do assunto ficaram entre 0.23 e 0.26
+# e perguntas do assunto passaram de 0.80. Recalibre com evaluate_retrieval.py
+MIN_SIMILARITY = 0.45
+
+# Limita o tamanho da pergunta antes de gerar o embedding
+MAX_QUERY_LENGTH = 500
+
+# Resposta padrao quando nao existe informacao relevante na base.
+# Ela nunca vem acompanhada de fontes ou trechos
+NOT_FOUND_MESSAGE = (
+    "Não encontrei essa informação na documentação do HTTPX."
+)
+
 CHROMA_COLLECTION_NAME = "httpx_docs"

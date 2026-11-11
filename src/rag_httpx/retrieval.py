@@ -3,7 +3,13 @@ from dataclasses import dataclass
 from langchain_chroma import Chroma
 from langchain_core.documents import Document
 
-from .config import DEFAULT_TOP_K, MAX_TOP_K, MIN_TOP_K
+from .config import (
+    DEFAULT_TOP_K,
+    MAX_QUERY_LENGTH,
+    MAX_TOP_K,
+    MIN_SIMILARITY,
+    MIN_TOP_K,
+)
 from .indexing import get_indexed_chunk_count
 
 # Junta o trecho encontrado com a similaridade e a posicao dele
@@ -18,6 +24,11 @@ def validate_query(query: str) -> str:
 
     if not clean_query:
         raise ValueError("A pergunta não pode estar vazia")
+
+    if len(clean_query) > MAX_QUERY_LENGTH:
+        raise ValueError(
+            f"A pergunta pode ter no máximo {MAX_QUERY_LENGTH} caracteres"
+        )
 
     return clean_query
 
@@ -69,3 +80,14 @@ def search_similar_chunks(
         )
 
     return results
+
+# Descarta os trechos fracos pra nao mostrar fontes sem relacao com a pergunta
+def filter_relevant_results(
+    results: list[SearchResult],
+    min_similarity: float = MIN_SIMILARITY,
+) -> list[SearchResult]:
+    return [
+        result
+        for result in results
+        if result.similarity >= min_similarity
+    ]

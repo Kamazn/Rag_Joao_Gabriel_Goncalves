@@ -4,7 +4,7 @@ from langchain_chroma import Chroma
 from langchain_core.language_models.chat_models import BaseChatModel
 
 from .chunking import create_chunks
-from .config import DEFAULT_TOP_K
+from .config import DEFAULT_TOP_K, NOT_FOUND_MESSAGE
 from .documents import (
     find_markdown_files,
     load_markdown_documents,
@@ -14,7 +14,11 @@ from .indexing import (
     get_indexed_chunk_count,
     index_chunks,
 )
-from .retrieval import SearchResult, search_similar_chunks
+from .retrieval import (
+    SearchResult,
+    filter_relevant_results,
+    search_similar_chunks,
+)
 
 @dataclass(frozen=True)
 class IndexingSummary:
@@ -27,6 +31,8 @@ class RAGResponse:
     question: str
     results: list[SearchResult]
     answer: str | None
+    # False quando nao existe informacao relevante, sem trechos nem fontes
+    found: bool = True
 
 # Liga leitura chunking embedding e Chroma na etapa de indexacao
 def run_indexing_pipeline(
@@ -71,6 +77,18 @@ def run_query_pipeline(
         top_k=top_k,
     )
 
+    # Trechos fracos nao saem do pipeline, assim nenhuma fonte vaza
+    relevant_results = filter_relevant_results(results)
+
+    if not relevant_results:
+        return RAGResponse(
+            question=query,
+            results=[],
+            answer=NOT_FOUND_MESSAGE,
+            found=False,
+        )
+
+    results = relevant_results
     answer: str | None = None
 
     if use_generation:
@@ -85,6 +103,15 @@ def run_query_pipeline(
             results=results,
             model=model,
         )
+
+        # O modelo tambem pode concluir que o contexto nao responde
+        if answer == NOT_FOUND_MESSAGE:
+            return RAGResponse(
+                question=query,
+                results=[],
+                answer=NOT_FOUND_MESSAGE,
+                found=False,
+            )
 
     return RAGResponse(
         question=query,

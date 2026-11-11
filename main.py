@@ -4,6 +4,11 @@ from typing import Any
 
 # Mostra o texto e a origem de cada trecho recuperado
 def print_search_results(response: Any) -> None:
+    # Sem informacao relevante mostra so o aviso, sem trechos nem fontes
+    if not response.found:
+        print(f"\n{response.answer}")
+        return
+
     print("\nTrechos recuperados:")
 
     for result in response.results:

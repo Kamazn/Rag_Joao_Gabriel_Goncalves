@@ -2,16 +2,18 @@
 
 Sistema local de recuperação e geração de respostas fundamentadas na documentação oficial do HTTPX.
 
-## Identificação
+## Visão geral
 
-- Nome do aluno: João Gabriel Gonçalves Batista
-- Formato da solução: Script Python pelo terminal e interface web local com Streamlit
-- Link do vídeo: https://youtu.be/3BK1a7VW52M
-- Link do Colab, se aplicável: Não se aplica
+- **Autor:** João Gabriel Gonçalves
+- **Formato:** script Python pelo terminal e interface web local com Streamlit
+- **Execução:** 100% local, sem API key
+- **Vídeo de demonstração:** https://youtu.be/3BK1a7VW52M
 
 ## Objetivo
 
-O sistema recebe perguntas sobre a documentação do HTTPX e retorna os trechos mais relevantes com suas fontes. Os documentos são divididos em chunks, transformados em embeddings e armazenados no Chroma. Depois da recuperação, o Qwen pode gerar uma resposta em português usando somente os trechos encontrados.
+O sistema recebe perguntas sobre a documentação do HTTPX e retorna os trechos mais relevantes com suas fontes. Os documentos são divididos em chunks, transformados em embeddings e armazenados no Chroma. Depois da recuperação, o Qwen pode gerar uma resposta em português usando somente os trechos encontrados. Perguntas fora do assunto recebem uma resposta padrão, sem trechos nem fontes.
+
+![Fluxo do RAG semântico para a documentação do HTTPX](img/image.png)
 
 ## Arquitetura resumida
 
@@ -40,7 +42,11 @@ Busca por similaridade no Chroma
         ↓
 Top 3 a 5 chunks ordenados
         ↓
-Trechos + fontes + seções + scores
+Filtro de similaridade mínima (MIN_SIMILARITY)
+        ↓
+Sem trechos relevantes: resposta padrão, sem fontes
+        ↓
+Com trechos relevantes: trechos + fontes + seções + scores
         ↓
 Qwen3.5 para geração opcional
 ```
@@ -135,7 +141,7 @@ Clone o repositório oficial dentro de `data/httpx`:
 git clone https://github.com/encode/httpx.git data/httpx
 ```
 
-Fixe a versão exigida pelo desafio:
+Fixe a versão usada no projeto:
 
 ```bash
 git -C data/httpx checkout b5addb64f0161ff6bfe94c124ef76f6a1fba5254
@@ -291,7 +297,7 @@ python -m pytest -q
 Resultado esperado:
 
 ```text
-20 passed
+25 passed
 ```
 
 ## Decisões técnicas
@@ -357,27 +363,45 @@ Depois da busca o texto e esses metadados retornam juntos. Por isso a saída con
 ### 3. Pergunta fora do escopo
 
 - Pergunta: Qual é a capital da França?
-- Como o sistema reagiu: O Chroma retornou três chunks com scores baixos entre `0.2311` e `0.2600`. O Qwen respondeu que a informação não estava presente porque os documentos tratam da documentação do HTTPX
-- Como essa reação poderia melhorar: Poderia ser criado um limiar de similaridade calibrado com perguntas de teste para rejeitar automaticamente resultados muito fracos
+- Comportamento original: o Chroma retornou três chunks com scores entre `0.2311` e `0.2600`. O Qwen respondeu que a informação não estava presente, mas o sistema ainda exibia as fontes e os trechos recuperados, o que expunha conteúdo da base sem relação com a pergunta
+- Correção: foi criado o limiar `MIN_SIMILARITY` (`0.45`). Sem nenhum trecho acima dele, o sistema responde com a mensagem padrão e não exibe trechos, fontes nem scores. Os scores observados fora do assunto (até `0.26`) ficam bem abaixo do limiar e o acerto de pergunta ampla (`0.8548`) fica bem acima
+- Validação: testes automatizados confirmam que a resposta fora do assunto não contém fontes e que o modelo de geração nem é chamado
+
+## Segurança
+
+- Não há API key, token ou senha no código nem no histórico
+- Perguntas fora do assunto não exibem fontes nem trechos da base (`MIN_SIMILARITY`)
+- A pergunta tem tamanho máximo (`MAX_QUERY_LENGTH`) antes de gerar o embedding
+- Erros internos aparecem só no log, a interface mostra mensagens genéricas
+- O conteúdo dos documentos é tratado como dado e nunca como instrução para o modelo
+
+### Calibrar o limiar
+
+O valor `0.45` foi escolhido a partir dos scores observados nos testes manuais. Para recalibrar com outro modelo ou outra base, execute:
+
+```bash
+python evaluate_retrieval.py
+```
+
+O script imprime o menor score de acerto e o maior score fora do assunto. O limiar deve ficar entre os dois.
 
 ## Limitações conhecidas
 
-- A busca sempre retorna a quantidade definida em `top_k` mesmo quando a pergunta está fora do assunto
+- A busca semântica sempre retorna `top_k` trechos, e o filtro `MIN_SIMILARITY` decide quais deles são exibidos
 - Perguntas muito amplas podem recuperar documentos apenas parcialmente relacionados
 - O score de similaridade não representa uma probabilidade
+- O limiar foi calibrado com poucas perguntas e pode rejeitar perguntas válidas e muito curtas
 - A geração local pode ser mais lenta em computadores que utilizam apenas CPU
 - O índice precisa ser recriado quando os documentos ou as configurações de chunking mudam
 - A estratégia atual utiliza busca semântica sem combinar uma busca lexical
-- Ainda não foi definido um limiar de similaridade para rejeitar resultados fracos
 
-## Uso de ferramentas de IA
+## Uso de IA no desenvolvimento
 
 - Ferramentas utilizadas: Codex como apoio no desenvolvimento e Qwen pelo Ollama como modelo local de embeddings e geração de respostas
 - Tarefas em que ajudaram: explicação dos conceitos de RAG, comparação das tecnologias, planejamento da arquitetura, sugestões de código e testes, diagnóstico de erros e revisão da documentação
 - Exemplo representativo de prompt ou orientação: Ajude a desenvolver e entender um RAG em Python que encontre arquivos Markdown recursivamente, preserve a origem e a seção dos chunks, utilize embeddings locais, armazene os vetores no Chroma e permita testar cada etapa
-- O que foi testado, modificado ou validado por você: defini a arquitetura do projeto e, após comparar diferentes opções, escolhi Python, Ollama, Qwen e Chroma; decidi usar execução local, busca semântica e `top_k` igual a 3; comparei três configurações de chunking e escolhi chunks de 60 palavras com overlap de 10 após os testes; implementei, revisei e adaptei as sugestões de código, organizei o projeto em módulos e analisei os resultados e os problemas encontrados durante os testes; validei a descoberta dos 23 documentos, títulos, seções, blocos de código, chunking, overlap, metadados, embeddings, persistência no Chroma, buscas em português e inglês, geração de respostas com fontes, perguntas fora do escopo e 20 testes automatizados
+- O que foi testado, modificado ou validado por você: defini a arquitetura do projeto e, após comparar diferentes opções, escolhi Python, Ollama, Qwen e Chroma; decidi usar execução local, busca semântica e `top_k` igual a 3; comparei três configurações de chunking e escolhi chunks de 60 palavras com overlap de 10 após os testes; implementei, revisei e adaptei as sugestões de código, organizei o projeto em módulos e analisei os resultados e os problemas encontrados durante os testes; validei a descoberta dos 23 documentos, títulos, seções, blocos de código, chunking, overlap, metadados, embeddings, persistência no Chroma, buscas em português e inglês, geração de respostas com fontes, perguntas fora do escopo e 25 testes automatizados
 
-Não inclua conversas completas, chaves ou dados pessoais.
 
 ## Referências e código externo
 
@@ -391,42 +415,3 @@ Não inclua conversas completas, chaves ou dados pessoais.
 - Vídeo utilizado para estudar RAG e embeddings: https://www.youtube.com/watch?v=hgLpzI85-cs
 - Vídeo utilizado como apoio durante o desenvolvimento: https://www.youtube.com/watch?v=yPz8LDcAcdA
 - Vídeo utilizado para estudar avaliação e estratégias de RAG: https://www.youtube.com/watch?v=LZoLvV7p25A
-
-## Segurança
-
-Confirme uma opção:
-
-- [x] Minha solução não usa API key.
-- [ ] Minha solução usa segredo protegido e nenhuma chave foi publicada.
-
-# Checklist final do aluno
-
-## Conteúdo
-
-- [x] A solução é individual.
-- [x] O notebook ou código-fonte está incluído.
-- [x] O `README.md` está preenchido.
-- [x] As dependências e os passos de execução estão descritos.
-- [x] O código usa `httpx/docs/**/*.md` no commit solicitado.
-- [x] A saída mostra trechos e fontes.
-- [x] Três tipos de pergunta foram testados.
-- [x] Há reflexão sobre pelo menos uma limitação.
-
-## Evidência
-
-- [x] O link do vídeo está no README e abre sem solicitar acesso adicional; ou
-- [ ] O `DIAGNOSTICO.md` foi incluído porque a execução não foi concluída.
-
-## Segurança e privacidade
-
-- [x] Não há API keys, tokens ou senhas no código, notebook, histórico, vídeo ou ZIP.
-- [x] Notificações e dados pessoais não aparecem no vídeo.
-- [x] Links compartilhados concedem somente o acesso necessário.
-
-## Envio
-
-- [x] O repositório abre para o professor ou o ZIP foi testado após ser descompactado.
-- [x] O nome da entrega identifica o aluno.
-- [x] O envio foi concluído dentro da janela de sexta-feira, 28 de agosto de 2026, às 13h, até domingo, 30 de agosto de 2026, às 13h, no horário de Recife.
-
-Abra sua própria entrega uma última vez em uma janela anônima ou ambiente limpo antes de enviá-la.
